@@ -83,14 +83,10 @@ def _store_bmoni_user_id(phone_number: str, bmoni_user_id: str) -> bool:
 
 async def _ensure_bmoni_user(phone_number: str, user_name: str) -> Optional[str]:
     """
-    Get or create BMONI user AND wallet, returns bmoniUserId
+    Get BMONI user ID if exists, DO NOT auto-create
     
-    This function now ensures:
-    1. BMONI user account exists
-    2. EVM keypair generated and stored (encrypted)
-    3. Wallet created and activated (server-side signing)
-    
-    All happens automatically, no user action required.
+    Returns bmoniUserId if account exists, None if not
+    User must explicitly create account via create_account tool
     """
     # Normalize phone number
     phone = _normalize_phone(phone_number)
@@ -100,34 +96,11 @@ async def _ensure_bmoni_user(phone_number: str, user_name: str) -> Optional[str]
     if existing and existing.get("bmoni_user_id"):
         bmoni_user_id = existing["bmoni_user_id"]
         logger.info(f"✅ Found existing BMONI user: {bmoni_user_id}")
-        
-        # Check if wallet exists, create if not
-        if not existing.get("wallet"):
-            logger.info(f"📝 User exists but wallet not created yet - creating now...")
-            wallet_result = await ensure_wallet_created(phone, bmoni_user_id)
-            if not wallet_result.get("success"):
-                logger.warning(f"⚠️ Wallet creation failed: {wallet_result.get('error')}")
-        
         return bmoni_user_id
     
-    # Create new BMONI user
-    logger.info(f"📝 Creating new BMONI user for {phone}")
-    bmoni_user_id = await get_or_create_bmoni_user(phone, user_name)
-    
-    if not bmoni_user_id:
-        return None
-    
-    # Create wallet automatically (server-side signing)
-    logger.info(f"🔐 Creating wallet for new user {bmoni_user_id}...")
-    wallet_result = await ensure_wallet_created(phone, bmoni_user_id)
-    
-    if wallet_result.get("success"):
-        logger.info(f"🎉 User and wallet setup complete!")
-    else:
-        logger.warning(f"⚠️ Wallet creation failed: {wallet_result.get('error')}")
-        logger.warning(f"   User can still use expense tracking, wallet creation will retry later")
-    
-    return bmoni_user_id
+    # No automatic creation - user must request it
+    logger.info(f"ℹ️ No BMONI account for {phone} - user must create manually")
+    return None
 
 
 # ===================== TOOLS =====================
@@ -290,11 +263,15 @@ async def check_balance() -> str:
     
     try:
         phone = _normalize_phone(_current_phone_number)
-        # Get or create BMONI user
+        # Get BMONI user (no auto-create)
         bmoni_user_id = await _ensure_bmoni_user(phone, _current_user_name)
         
         if not bmoni_user_id:
-            return "⚠️ Could not access wallet. Please ensure you have completed wallet setup."
+            return (
+                "⚠️ You don't have a SabiSpend account yet.\n\n"
+                "To create your account and start using the wallet, just say:\n"
+                "\"I want to create my account\""
+            )
         
         # Get balance
         balance = await get_user_balance_naira(bmoni_user_id)
@@ -472,32 +449,252 @@ async def confirm_send_money(code: str) -> str:
 
 
 @tool
-async def verify_message(message_text: str, sender: str = "") -> str:
+async def create_account(full_name: str, bvn: str, date_of_birth: str, city: str, state: str) -> str:
     """
-    Check if a forwarded SMS or WhatsApp message is a scam
+    Create a complete BMONI account with KYC and NGN wallet activation.
+    
+    This tool handles the full account creation flow:
+    1. Creates BMONI user account
+    2. Generates secure wallet keypair
+    3. Creates managed wallet
+    4. Submits KYC information
+    5. Activates NGN rail for transfers
     
     Args:
-        message_text: The message content to verify
-        sender: Sender name/number (optional)
+        full_name: User's full legal name (e.g., "Amina Ibrahim")
+        bvn: 11-digit Bank Verification Number (e.g., "22238719042")
+        date_of_birth: Date in DD/MM/YYYY format (e.g., "15/03/1985")
+        city: City of residence (e.g., "Lagos", "Kano", "Abuja")
+        state: State of residence (e.g., "Lagos", "Kano State", "FCT")
     
     Returns:
-        Scam analysis with risk level and advice
+        Success message with account details or error message
     
-    Call this when user forwards a message asking:
-    - "Is this real?"
-    - "Check this message"
-    - [forwards bank alert or suspicious text]
+    IMPORTANT - When to use:
+    - User explicitly requests "create account", "open account", "register"
+    - User says "I want to create my account"
+    - NEVER call automatically - user must initiate
+    
+    HOW TO USE:
+    1. When user wants to create account, send them this message:
+       "To create your SabiSpend account, please send ALL these details in one message:
+       
+       1. Your full name
+       2. Your BVN (11 digits)
+       3. Your date of birth (DD/MM/YYYY)
+       4. Your city
+       5. Your state
+       
+       Example: Amina Ibrahim, 22238719042, 15/03/1985, Kano, Kano State"
+    
+    2. When user replies with all info, extract and call this tool
+    3. If user already has account, inform them and skip
     """
+    global _current_phone_number
+    if not _current_phone_number:
+        return "Could not create account — user not identified."
+    
     try:
-        analysis = analyze_message(message_text, sender)
-        formatted_result = format_analysis_for_user(analysis, message_text[:100])
+        phone = _normalize_phone(_current_phone_number)
         
-        logger.info(f"🔍 Message verified: {analysis['risk_level']} risk")
-        return formatted_result
+        # Check if user already has account
+        existing = bmoni_store.get_by_phone(phone)
+        if existing and existing.get("bmoni_user_id"):
+            return (
+                "✅ You already have a SabiSpend account!\n\n"
+                "Your wallet is active and ready to use. You can:\n"
+                "• Check your balance\n"
+                "• Send money\n"
+                "• Track expenses"
+            )
+        
+        # Validate BVN format
+        bvn_clean = bvn.strip().replace(" ", "")
+        if not bvn_clean.isdigit() or len(bvn_clean) != 11:
+            return "❌ BVN must be exactly 11 digits. Please check and try again."
+        
+        # Parse date of birth
+        try:
+            from datetime import datetime
+            dob_obj = datetime.strptime(date_of_birth.strip(), "%d/%m/%Y")
+            dob_iso = dob_obj.strftime("%Y-%m-%d")
+        except ValueError:
+            return "❌ Date of birth must be in DD/MM/YYYY format (e.g., 15/03/1985)"
+        
+        logger.info(f"🚀 Starting account creation for {phone}")
+        
+        # Step 1: Create BMONI user
+        logger.info("📝 Step 1: Creating BMONI user...")
+        user_result = await bmoni_client.create_user(
+            phone_number=phone,
+            first_name=full_name.strip()
+        )
+        
+        if "error" in user_result or not user_result.get("bmoniUserId"):
+            error_msg = user_result.get("error", "Unknown error")
+            logger.error(f"❌ User creation failed: {error_msg}")
+            return f"❌ Could not create account: {error_msg}"
+        
+        bmoni_user_id = user_result["bmoniUserId"]
+        _store_bmoni_user_id(phone, bmoni_user_id)
+        logger.info(f"✅ BMONI user created: {bmoni_user_id}")
+        
+        # Step 2: Create wallet (with keypair and server-side signing)
+        logger.info("🔐 Step 2: Creating secure wallet...")
+        from bmoni_client import ensure_wallet_created
+        wallet_result = await ensure_wallet_created(phone, bmoni_user_id)
+        
+        if not wallet_result.get("success"):
+            error_msg = wallet_result.get("error", "Unknown error")
+            logger.error(f"❌ Wallet creation failed: {error_msg}")
+            return f"❌ Account created but wallet setup failed: {error_msg}"
+        
+        wallet_address = wallet_result["wallet"]["address"]
+        logger.info(f"✅ Wallet created: {wallet_address}")
+        
+        # Step 3: Submit KYC
+        logger.info("📋 Step 3: Submitting KYC information...")
+        kyc_payload = {
+            "address": {
+                "line1": "123 Street",  # Generic for now
+                "city": city.strip(),
+                "state": state.strip(),
+                "postalCode": "100001",
+                "country": "NGA"
+            },
+            "occupation": "Trader",
+            "dateOfBirth": dob_iso
+        }
+        
+        kyc_result = await bmoni_client.update_kyc(bmoni_user_id, kyc_payload, phone)
+        if "error" in kyc_result:
+            logger.warning(f"⚠️ KYC update: {kyc_result['error']}")
+        else:
+            logger.info("✅ KYC submitted")
+        
+        # Step 4: Activate KYC
+        logger.info("🔓 Step 4: Activating KYC...")
+        activate_result = await bmoni_client.activate_kyc(bmoni_user_id, phone)
+        if "error" in activate_result:
+            logger.warning(f"⚠️ KYC activation: {activate_result['error']}")
+        else:
+            logger.info("✅ KYC activated")
+        
+        # Step 5: Start Nigeria onboarding (activate NGN rail)
+        logger.info("🇳🇬 Step 5: Activating NGN wallet...")
+        nigeria_result = await bmoni_client.start_nigeria(
+            bmoni_user_id=bmoni_user_id,
+            bvn=bvn_clean,
+            wallet_address=wallet_address,
+            wallet_index=0,
+            phone_number=phone
+        )
+        
+        if "error" in nigeria_result:
+            error_msg = nigeria_result.get("error", "Unknown error")
+            logger.error(f"❌ NGN activation failed: {error_msg}")
+            return (
+                f"⚠️ Account and wallet created, but NGN activation failed: {error_msg}\n\n"
+                f"Your account is created but you may not be able to send/receive money yet."
+            )
+        
+        logger.info("✅ NGN wallet activated")
+        
+        # Success!
+        return (
+            f"🎉 Account created successfully!\n\n"
+            f"✅ BMONI account active\n"
+            f"✅ Secure wallet created\n"
+            f"✅ NGN transfers enabled\n\n"
+            f"You can now:\n"
+            f"• Check your balance\n"
+            f"• Send money to other users\n"
+            f"• Track your expenses and profit\n\n"
+            f"Welcome to SabiSpend! 💰"
+        )
         
     except Exception as e:
-        logger.error(f"❌ verify_message error: {e}")
-        return "Could not verify message at this time."
+        logger.error(f"❌ create_account error: {e}", exc_info=True)
+        return f"❌ Account creation failed: {str(e)}"
+
+
+@tool
+async def verify_account(account_number: str, bank_name: str = "") -> str:
+    """
+    Verify a Nigerian bank account number and get the account holder's name.
+    
+    This helps users confirm recipient details before sending money, preventing
+    errors like sending to wrong accounts.
+    
+    Args:
+        account_number: The 10-digit Nigerian bank account number (required)
+        bank_name: The bank name (use context/remotion to infer if not explicitly stated)
+    
+    Returns:
+        The account holder's name if verified, or error/prompt for bank name if needed
+    
+    CRITICAL - USE REMOTION:
+    - Check conversation history for bank mentions before asking
+    - User said "my GTB account" earlier? Use "GTB"
+    - User discussing Access Bank? Use "Access"
+    - Common banks: GTB, Access, Zenith, UBA, First Bank, Polaris, Sterling
+    - ONLY ask "which bank?" if absolutely no context exists
+    
+    Examples:
+        User: "send to my GTB account 0123456789" then "verify it"
+        → Use bank_name="GTB" from context, don't ask again
+        
+        User: "verify 0123456789" (no prior context)
+        → Ask: "Which bank is this account with?"
+    """
+    global _current_phone_number
+    if not _current_phone_number:
+        return "Could not verify account — user not identified."
+    
+    # Convert account_number to string if it's not already
+    account_number_str = str(account_number).strip()
+    
+    # Check if bank name is provided
+    if not bank_name or bank_name.strip() == "":
+        return "⚠️ Which bank is this account with? (e.g., GTB, Access, Zenith, UBA, First Bank)"
+    
+    try:
+        phone = _normalize_phone(_current_phone_number)
+        bmoni_user_id = _get_bmoni_user_id(phone)
+        
+        if not bmoni_user_id:
+            return "Please set up your wallet first before verifying accounts."
+        
+        # Import the verification function
+        from bank_account_resolver import verify_recipient_bank_account
+        
+        result = await verify_recipient_bank_account(
+            bmoni_user_id,
+            account_number_str,
+            bank_name
+        )
+        
+        if result.get("success"):
+            account_name = result["account_name"]
+            bank_name_full = result["bank_name"]
+            return f"✅ Account verified:\n{account_name}\n{account_number_str} ({bank_name_full})"
+        
+        error = result.get("error", "Could not verify account")
+        candidates = result.get("candidates", [])
+        
+        if candidates:
+            # Bank name was ambiguous
+            banks_list = "\n".join(f"  • {b}" for b in candidates)
+            return f"{error}\n\nDid you mean:\n{banks_list}\n\nPlease specify which bank."
+        
+        return f"❌ {error}"
+        
+    except Exception as e:
+        logger.error(f"❌ verify_account error: {e}", exc_info=True)
+        return "Could not verify account at this time. Please check the details and try again."
+
+
+# verify_message tool removed - AI analyzes images directly without tools
 
 
 def is_prompt_injection_attempt(user_input: str) -> bool:
@@ -568,7 +765,9 @@ class UnifiedAgent:
             save_to_wallet,
             request_send_money,
             confirm_send_money,
-            verify_message
+            create_account,
+            verify_account,
+            # verify_message removed - AI analyzes all images directly
         ]
 
     async def initialize(self):
@@ -599,7 +798,7 @@ class UnifiedAgent:
             checkpointer=self.memory,
         )
 
-        logger.info("✅ SabiSpend agent initialized with 7 tools")
+        logger.info("✅ SabiSpend agent initialized with 8 tools (images handled directly by AI)")
 
     def _load_history(self, config: dict) -> list:
         """Load and trim message history from checkpoint"""
@@ -638,8 +837,14 @@ class UnifiedAgent:
                     result = await check_balance.ainvoke(args)
                 elif name == "save_to_wallet":
                     result = await save_to_wallet.ainvoke(args)
-                elif name == "verify_message":
-                    result = await verify_message.ainvoke(args)
+                elif name == "request_send_money":
+                    result = await request_send_money.ainvoke(args)
+                elif name == "confirm_send_money":
+                    result = await confirm_send_money.ainvoke(args)
+                elif name == "create_account":
+                    result = await create_account.ainvoke(args)
+                elif name == "verify_account":
+                    result = await verify_account.ainvoke(args)
                 else:
                     result = f"Unknown tool: {name}"
             except Exception as e:

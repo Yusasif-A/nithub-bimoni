@@ -18,6 +18,24 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
+def _normalize_phone(phone: str) -> str:
+    """Normalize phone number to include + prefix"""
+    phone = phone.strip()
+    if not phone.startswith("+"):
+        return f"+{phone}"
+    return phone
+
+
+def _get_bmoni_phone(phone_number: str) -> str:
+    """Get BMONI phone number (may be mapped from WhatsApp phone)"""
+    try:
+        from phone_mapper import get_bmoni_phone
+        return get_bmoni_phone(_normalize_phone(phone_number))
+    except ImportError:
+        # Phone mapper not available, use original number
+        return _normalize_phone(phone_number)
+
+
 class BMONIStore:
     def __init__(self, collection=None):
         self.collection = collection
@@ -57,7 +75,9 @@ class BMONIStore:
     def get_by_phone(self, phone_number: str) -> Optional[Dict[str, Any]]:
         if not self.available:
             return None
-        return self.collection.find_one({"phone_number": phone_number}, {"_id": 0})
+        # Use mapped BMONI phone for lookup
+        bmoni_phone = _get_bmoni_phone(phone_number)
+        return self.collection.find_one({"phone_number": bmoni_phone}, {"_id": 0})
 
     def claim_user_creation(self, phone_number: str) -> bool:
         """Atomically reserve a phone number before calling POST /users.
@@ -66,10 +86,12 @@ class BMONIStore:
         for manual reconciliation instead of risking a duplicate remote user.
         """
         self._require_available()
+        # Use mapped BMONI phone
+        bmoni_phone = _get_bmoni_phone(phone_number)
         now = datetime.now(timezone.utc)
         try:
             self.collection.insert_one({
-                "phone_number": phone_number,
+                "phone_number": bmoni_phone,
                 "lifecycle_stage": "user_creation_pending",
                 "created_at": now,
                 "updated_at": now,
@@ -80,6 +102,8 @@ class BMONIStore:
 
     def save_user(self, phone_number: str, bmoni_user_id: str, **details: Any) -> None:
         self._require_available()
+        # Use mapped BMONI phone
+        bmoni_phone = _get_bmoni_phone(phone_number)
         now = datetime.now(timezone.utc)
         values = {
             "bmoni_user_id": bmoni_user_id,
@@ -87,31 +111,36 @@ class BMONIStore:
             **{key: value for key, value in details.items() if value is not None},
         }
         self.collection.update_one(
-            {"phone_number": phone_number},
-            {"$set": values, "$setOnInsert": {"phone_number": phone_number, "created_at": now}},
+            {"phone_number": bmoni_phone},
+            {"$set": values, "$setOnInsert": {"phone_number": bmoni_phone, "created_at": now}},
             upsert=True,
         )
 
     def save_wallet(self, phone_number: str, wallet_id: str, address: str, **details: Any) -> None:
-        self._set(phone_number, {
+        # Use mapped BMONI phone
+        bmoni_phone = _get_bmoni_phone(phone_number)
+        self._set(bmoni_phone, {
             "wallet": {"id": wallet_id, "address": address, **details},
             "lifecycle_stage": "wallet_created",
         })
 
     def set_kyc_status(self, phone_number: str, status: str, **details: Any) -> None:
-        self._set(phone_number, {"kyc": {"status": status, **details}})
+        bmoni_phone = _get_bmoni_phone(phone_number)
+        self._set(bmoni_phone, {"kyc": {"status": status, **details}})
 
     def set_onboarding_status(self, phone_number: str, status: Any) -> None:
-        self._set(phone_number, {"onboarding_status": status})
+        bmoni_phone = _get_bmoni_phone(phone_number)
+        self._set(bmoni_phone, {"onboarding_status": status})
 
     def save_bank_account(self, phone_number: str, account: Dict[str, Any]) -> None:
+        bmoni_phone = _get_bmoni_phone(phone_number)
         account_id = account.get("id") or account.get("bankAccountId")
         if not account_id:
             raise ValueError("A bank account id is required")
         self._require_available()
         now = datetime.now(timezone.utc)
         self.collection.update_one(
-            {"phone_number": phone_number},
+            {"phone_number": bmoni_phone},
             {
                 "$set": {"updated_at": now},
                 "$addToSet": {"withdrawal_accounts": {**account, "id": account_id}},
@@ -119,18 +148,35 @@ class BMONIStore:
         )
 
     def save_proposal(self, phone_number: str, proposal: Dict[str, Any]) -> None:
+        bmoni_phone = _get_bmoni_phone(phone_number)
         proposal_id = proposal.get("id") or proposal.get("proposalId")
         if not proposal_id:
             raise ValueError("A proposal id is required")
-        self._set(phone_number, {
+        self._set(bmoni_phone, {
             f"withdrawal_proposals.{proposal_id}": {**proposal, "id": proposal_id}
         })
 
     def update_proposal_status(self, phone_number: str, proposal_id: str, status: str) -> None:
-        self._set(phone_number, {
+        bmoni_phone = _get_bmoni_phone(phone_number)
+        self._set(bmoni_phone, {
             f"withdrawal_proposals.{proposal_id}.status": status,
             f"withdrawal_proposals.{proposal_id}.checked_at": datetime.now(timezone.utc),
         })
+
+    def delete_wallet(self, phone_number: str) -> None:
+        """Remove wallet information from account (to allow recreating with correct owner key)"""
+        self._require_available()
+        bmoni_phone = _get_bmoni_phone(phone_number)
+        self.collection.update_one(
+            {"phone_number": bmoni_phone},
+            {
+                "$unset": {"wallet": ""},
+                "$set": {
+                    "updated_at": datetime.now(timezone.utc),
+                    "lifecycle_stage": "wallet_deleted"
+                }
+            }
+        )
 
     def _set(self, phone_number: str, values: Dict[str, Any]) -> None:
         self._require_available()

@@ -1,0 +1,128 @@
+.section {
+  background: #0e4a2b;
+  padding: 96px 24px;
+}
+
+/* override global h2 colour for dark bg */
+.section h2 { color: #fff; }
+.section .lead { color: rgba(255,255,255,0.75); }
+.section :global(.section-label) {
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.8);
+}
+
+.boards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* ── clipboard wrapper ── */
+.board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── metal clip ── */
+.clip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: -2px;
+  z-index: 2;
+  position: relative;
+}
+
+.clipScrew {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #e8e8e8, #8a8a8a);
+  border: 1.5px solid #666;
+  margin-bottom: 2px;
+}
+
+.clipBody {
+  width: 80px;
+  height: 28px;
+  background: linear-gradient(180deg, #d4d4d4 0%, #a0a0a0 40%, #c8c8c8 100%);
+  border-radius: 6px 6px 0 0;
+  border: 1.5px solid #888;
+  box-shadow: inset 0 2px 4px rgba(255,255,255,0.4), 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.clipJaw {
+  width: 80px;
+  height: 10px;
+  background: linear-gradient(180deg, #b0b0b0, #888);
+  border-radius: 0 0 4px 4px;
+  border: 1.5px solid #777;
+  border-top: none;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.25);
+}
+
+/* ── paper ── */
+.paper {
+  width: 100%;
+  border-radius: 6px;
+  padding: 28px 28px 44px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+}
+
+.bad .paper  { background: #f5e642; }
+.good .paper { background: #d4f0a0; }
+
+.tag {
+  display: inline-block;
+  border: 1.5px solid rgba(0,0,0,0.25);
+  border-radius: 999px;
+  padding: 5px 16px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 24px;
+}
+
+/* ── list ── */
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.item {
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.12);
+  font-size: 1rem;
+  font-weight: 500;
+  color: #222;
+  line-height: 1.45;
+}
+
+.item:last-child { border-bottom: none; }
+
+/* ── curled corner ── */
+.curl {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(
+    135deg,
+    transparent 50%,
+    rgba(0,0,0,0.08) 50%,
+    rgba(0,0,0,0.12) 60%,
+    #fff 60%
+  );
+  border-top-left-radius: 6px;
+}
+
+@media (max-width: 640px) {
+  .boards { grid-template-columns: 1fr; gap: 48px; }
+}

@@ -126,9 +126,12 @@ class TextToSpeech:
 
     def _tts_with_client(self, client: OpenAI, url: str, cleaned_text: str, voice: str) -> bytes:
         print(f"🔊 English TTS Request → {url}")
+        # For English, always use "mariam" voice regardless of input voice parameter
+        tts_voice = "mariam"
+        print(f"🎤 Using voice: {tts_voice}")
         with client.audio.speech.with_streaming_response.create(
             model=self.model,
-            voice=voice,
+            voice=tts_voice,
             input=cleaned_text
         ) as response:
             audio_bytes = response.read()

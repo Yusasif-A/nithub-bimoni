@@ -421,7 +421,10 @@ class BMONIClient:
             json={"proposal": proposal_body},
         )
         if phone_number and "error" not in result:
-            bmoni_store.save_proposal(phone_number, result)
+            # Extract the proposal object from the response
+            proposal = result.get("data", {}).get("proposal", result.get("proposal"))
+            if proposal:
+                bmoni_store.save_proposal(phone_number, proposal)
         return result
 
     async def approve_proposal(self, bmoni_user_id: str, proposal_id: str) -> Dict:
@@ -858,7 +861,15 @@ async def request_send_money(
     # currency's wallet fails with a 400, not a missing-endpoint error. Check
     # the recipient's actual wallets first rather than trusting our own cache.
     wallets_result = await bmoni_client.get_wallets(recipient_bmoni_user_id)
-    recipient_wallets = wallets_result.get("wallets", wallets_result.get("data", []))
+    
+    # Handle different response formats
+    if isinstance(wallets_result, list):
+        recipient_wallets = wallets_result
+    elif isinstance(wallets_result, dict):
+        recipient_wallets = wallets_result.get("wallets", wallets_result.get("data", {}).get("wallets", []))
+    else:
+        recipient_wallets = []
+    
     has_ngn_wallet = any(
         w.get("currency") in ("CNGN", "NGN") and w.get("status", "active") == "active"
         for w in (recipient_wallets if isinstance(recipient_wallets, list) else [])

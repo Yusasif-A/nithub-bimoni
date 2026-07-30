@@ -1,0 +1,96 @@
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 80px 20px 60px;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  line-height: 1.7;
+  color: #1c1c1c;
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: 30px;
+  color: #1A7A4A;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.container h1 {
+  color: #1A7A4A;
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  font-weight: 800;
+}
+
+.lastUpdated {
+  color: #5a5a5a;
+  font-size: 0.9rem;
+  margin-bottom: 30px;
+}
+
+.container h2 {
+  color: #1c1c1c;
+  font-size: 1.5rem;
+  margin-top: 40px;
+  margin-bottom: 15px;
+  font-weight: 700;
+}
+
+.container p {
+  margin-bottom: 15px;
+  color: #1c1c1c;
+}
+
+.container ul {
+  margin-left: 30px;
+  margin-bottom: 15px;
+  padding-left: 0;
+}
+
+.container li {
+  margin-bottom: 8px;
+  color: #1c1c1c;
+}
+
+.container a {
+  color: #1A7A4A;
+  text-decoration: underline;
+}
+
+.container a:hover {
+  color: #145e39;
+}
+
+.contact {
+  background: #f5f5f5;
+  padding: 25px;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.contact p {
+  margin-bottom: 10px;
+}
+
+.contact p:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 60px 15px 40px;
+  }
+
+  .container h1 {
+    font-size: 2rem;
+  }
+
+  .container h2 {
+    font-size: 1.3rem;
+  }
+}

@@ -1,0 +1,15 @@
+========================================
+FIREBASE DEPLOYMENT COMMANDS
+========================================
+
+1. Build the React app:
+npm run build
+
+2. Deploy to Firebase:
+firebase deploy
+
+========================================
+THAT'S IT!
+========================================
+
+Your app will be live at: https://chopbeta-ai.web.app

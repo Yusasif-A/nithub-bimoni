@@ -1,0 +1,36 @@
+.how { background: var(--cream); }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
+  gap: 32px;
+  align-items: start;
+}
+
+.step {}
+
+.num {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--green);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.step h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 10px; }
+.step p { font-size: 1.05rem; color: var(--muted); line-height: 1.65; }
+
+.step img {
+  width: 100%;
+  border-radius: var(--radius);
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  margin-top: 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}

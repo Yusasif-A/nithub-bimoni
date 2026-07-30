@@ -3,6 +3,7 @@ import re
 import glob
 import shutil
 import httpx
+import time
 from io import BytesIO
 from typing import Dict, List, Any
 from fastapi import FastAPI, Request, Response, HTTPException, BackgroundTasks
@@ -73,6 +74,33 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 load_dotenv()
+
+# ── Returning-user menu selection tracking ───────────────────────────────
+# When the "hi"/"menu" greeting shows a numbered menu, a bare reply like "1"
+# has no meaning on its own — the AI never saw what menu was shown. This
+# tracks, per thread, that a menu was just shown (and whether the wallet
+# existed at that moment, since item 3 differs depending on that), so the
+# next bare-digit reply can be expanded into full natural-language intent
+# before it reaches the AI. In-memory and single-process, same tradeoff as
+# the send-money OTP tracker — resets on restart, fine for one instance.
+_last_menu_shown: Dict[str, Dict[str, Any]] = {}
+MENU_SELECTION_EXPIRY_SECONDS = 7 * 24 * 3600  # 7 days — this is just a UX
+# convenience mapping (unlike the send-money OTP, which is a real security
+# control and correctly needs a short expiry). There's no reason to make
+# someone lose their menu selection just because they took a day to reply.
+
+
+def _menu_digit_to_intent(digit: str, has_wallet: bool) -> str:
+    """Expand a bare menu-number reply into the full intent it represents."""
+    mapping = {
+        "1": "I want to track my sales, expenses, and profit.",
+        "2": "I want to check my BMONI wallet balance.",
+        "3": ("I want to verify a bank account number." if has_wallet
+              else "I want to create my BMONI account and wallet."),
+        "4": "I want to send money to another account.",
+        "5": "I want to check a message to see if it's a scam.",
+    }
+    return mapping.get(digit, digit)
 
 from services import get_stt_service, get_tts_service
 from expense_tracker import get_all_user_threads
@@ -899,10 +927,10 @@ async def process_whatsapp_message(message: dict, from_number: str):
                 onboarding_msg = (
                     "👋 *Welcome to SabiSpend!*\n\n"
                     "I'm your AI money assistant. I help you:\n\n"
-                    "💰 Track daily expenses and sales\n"
-                    "📊 Calculate your profit\n"
-                    "🏦 Save money in your BMONI wallet\n"
-                    "🛡️ Check if messages are scams\n\n"
+                    "💰  Track expenses & profit\n"
+                    "📊 Account Creation - Create account and Check bank account details\n"
+                    "🏦 Send money - Transfer to other accounts\n"
+                    "🛡️ Detect scams – Analyze suspicious messages and review transactions\n\n"
                     "I can respond in *voice and text* in all 4 Nigerian languages.\n\n"
                     "🌍 *Select your language to start:*"
                 )
@@ -949,42 +977,58 @@ async def process_whatsapp_message(message: dict, from_number: str):
                         "english": (
                             "👋 *Welcome back to SabiSpend!*\n\n"
                             "I can help you with:\n\n"
-                            "1. 📊 *Track sales, expenses & profit* - \"I bought rice for 15,000 naira\" or \"What's my profit today?\"\n"
+                            "1. 📊 *Track expenses & profit* - \"I bought rice for 15,000 naira\"\n"
                             "2. 💰 *Check balance* - \"How much money do I have?\"\n"
-                            "3. 🔐 *Verify account* - Complete KYC verification\n"
-                            + ("4. 💸 *Send money* - Transfer to other wallets\n" if has_wallet else "4. 🏦 *Open account* - Create BMONI wallet\n")
+                            + ("3. 🏦 *Create account* - Open your BMONI wallet\n" if not has_wallet else "3. ✅ *Verify account number* - Check bank account details\n")
+                            + "4. 💸 *Send money* - Transfer to other accounts\n"
                             + "5. 🛡️ *Detect scams* - Forward suspicious messages\n\n"
-                            "How can I assist you today?"
+                            + "I can respond in *English, Hausa, Yoruba and Igbo* — in text or voice.\n\n"
+                            + "By using this service, you agree to our:\n"
+                            + "📄 Terms: https://sabispend-ai.web.app/terms-of-use\n"
+                            + "🔒 Privacy: https://sabispend-ai.web.app/privacy-policy\n\n"
+                            + "How can I assist you today?"
                         ),
                         "hausa": (
                             "👋 *Barka da dawowa zuwa SabiSpend!*\n\n"
                             "Zan iya taimaka maka da:\n\n"
-                            "1. 📊 *Lura da kashe kuɗi da riba* - \"Na sayi shinkafa da naira 15,000\" ko \"Wane irin riba na samu yau?\"\n"
+                            "1. 📊 *Lura da kashe kuɗi da riba* - \"Na sayi shinkafa da naira 15,000\"\n"
                             "2. 💰 *Duba ma'auni* - \"Nawa kudin da nake da shi?\"\n"
-                            "3. 🔐 *Tabbatar da asusun* - Kammala tabbacin KYC\n"
-                            + ("4. 💸 *Tura kuɗi* - Tura zuwa wasu wallet\n" if has_wallet else "4. 🏦 *Buɗe asusun* - Kirkiro wallet na BMONI\n")
+                            + ("3. 🏦 *Kirkiro asusun* - Buɗe wallet na BMONI\n" if not has_wallet else "3. ✅ *Tabbatar da lambar asusun* - Duba bayanan asusun banki\n")
+                            + "4. 💸 *Tura kuɗi* - Tura zuwa wasu asusu\n"
                             + "5. 🛡️ *Gano damfara* - Tura saƙon da ake shakka\n\n"
-                            "Yaya zan iya taimaka maka yau?"
+                            + "Ina iya amsa cikin *Turanci, Hausa, Yoruba da Igbo* — cikin rubutu ko murya.\n\n"
+                            + "Ta yin amfani da wannan sabis, kun yarda da:\n"
+                            + "📄 Sharuɗɗa: https://sabispend-ai.web.app/terms-of-use\n"
+                            + "🔒 Sirri: https://sabispend-ai.web.app/privacy-policy\n\n"
+                            + "Yaya zan iya taimaka maka yau?"
                         ),
                         "igbo": (
                             "👋 *Nnọọ na SabiSpend!*\n\n"
                             "Enwere m ike inyere gị aka na:\n\n"
-                            "1. 📊 *Soro mmefu ego na uru* - \"M zụtara osikapa iri puku na ise naira\" ma ọ bụ \"Kedu uru m nwetara taa?\"\n"
+                            "1. 📊 *Soro mmefu ego na uru* - \"M zụtara osikapa iri puku na ise naira\"\n"
                             "2. 💰 *Lelee ego* - \"Ego ole ka m nwere?\"\n"
-                            "3. 🔐 *Kwado akaụntụ* - Mezuo nyocha KYC\n"
-                            + ("4. 💸 *Zipu ego* - Ziga na wallet ndị ọzọ\n" if has_wallet else "4. 🏦 *Mepee akaụntụ* - Mepụta wallet BMONI\n")
+                            + ("3. 🏦 *Mepee akaụntụ* - Mepụta wallet BMONI\n" if not has_wallet else "3. ✅ *Kwado nọmba akaụntụ* - Lelee nkọwa akaụntụ ụlọ akụ\n")
+                            + "4. 💸 *Zipu ego* - Ziga na akaụntụ ndị ọzọ\n"
                             + "5. 🛡️ *Chọpụta aghụghọ* - Ziga ozi ndị na-enyo enyo\n\n"
-                            "Kedu ka m ga-esi nyere gị aka taa?"
+                            + "Enwere m ike ịza na *Bekee, Hausa, Yoruba na Igbo* — na ederede ma ọ bụ olu.\n\n"
+                            + "Site n'iji ọrụ a, ị kwenyere na:\n"
+                            + "📄 Usoro: https://sabispend-ai.web.app/terms-of-use\n"
+                            + "🔒 Nzuzo: https://sabispend-ai.web.app/privacy-policy\n\n"
+                            + "Kedu ka m ga-esi nyere gị aka taa?"
                         ),
                         "yoruba": (
                             "👋 *Ẹ káàbọ̀ padà sí SabiSpend!*\n\n"
                             "Mo lè ràn ọ́ lọ́wọ́ pẹ̀lú:\n\n"
-                            "1. 📊 *Tọpinpin ìnáwó àti èrè* - \"Mo ra ìrẹsì fún ẹgbẹ̀rún mẹ́ẹ̀ẹ́dógún naira\" tàbí \"Èrè mélòó ni mo rí lónìí?\"\n"
+                            "1. 📊 *Tọpinpin ìnáwó àti èrè* - \"Mo ra ìrẹsì fún ẹgbẹ̀rún mẹ́ẹ̀ẹ́dógún naira\"\n"
                             "2. 💰 *Ṣàyẹ̀wò owó* - \"Owó mélòó ni mo ní?\"\n"
-                            "3. 🔐 *Jẹ́rìísí iroyin* - Parí ìjẹ́rìísí KYC\n"
-                            + ("4. 💸 *Fi owó ránṣẹ́* - Gbé sí àwọn wallet míràn\n" if has_wallet else "4. 🏦 *Ṣí iroyin* - Dá wallet BMONI\n")
+                            + ("3. 🏦 *Ṣí iroyin* - Ṣí wallet BMONI rẹ\n" if not has_wallet else "3. ✅ *Jẹ́rìísí nọ́mbà iroyin* - Ṣàyẹ̀wò àlàyé iroyin banki\n")
+                            + "4. 💸 *Fi owó ránṣẹ́* - Gbé sí àwọn iroyin míràn\n"
                             + "5. 🛡️ *Ṣàwárí ẹ̀tàn* - Fi àwọn ìfiránsẹ́ tí o fura sí ránṣẹ́\n\n"
-                            "Báwo ni mo ṣe lè ràn ọ́ lọ́wọ́ lónìí?"
+                            + "Mo lè dáhùn ní *Gẹ̀ẹ́sì, Hausa, Yorùbá àti Igbo* — ní ìkọ̀wé tàbí ohùn.\n\n"
+                            + "Nípa lílo iṣẹ́ yìí, o gbà pẹ̀lú:\n"
+                            + "📄 Àwọn òfin: https://sabispend-ai.web.app/terms-of-use\n"
+                            + "🔒 Ìpamọ́: https://sabispend-ai.web.app/privacy-policy\n\n"
+                            + "Báwo ni mo ṣe lè ràn ọ́ lọ́wọ́ lónìí?"
                         )
                     }
                     
@@ -992,7 +1036,25 @@ async def process_whatsapp_message(message: dict, from_number: str):
                     # Get wallet status for language list
                     has_wallet = existing_account and existing_account.get("wallet") is not None
                     await send_response_with_language_list(from_number, welcome_msg, user_language, has_wallet)
+                    _last_menu_shown[thread_id] = {"has_wallet": has_wallet, "shown_at": time.time()}
                     return
+            # ────────────────────────────────────────────────────────────
+
+            # ── Bare-digit reply to the returning-user menu ───
+            # If a menu was just shown to this thread and the user replies
+            # with a bare "1"-"5", expand it into what that option actually
+            # means before it goes to the AI — otherwise the model only ever
+            # sees the digit with no context.
+            menu_state = _last_menu_shown.get(thread_id)
+            if (
+                stripped in {"1", "2", "3", "4", "5"}
+                and menu_state
+                and (time.time() - menu_state["shown_at"]) < MENU_SELECTION_EXPIRY_SECONDS
+            ):
+                expanded_text = _menu_digit_to_intent(stripped, menu_state["has_wallet"])
+                logger.info(f"[bg] 🔢 Expanded menu digit '{stripped}' → \"{expanded_text}\"")
+                del _last_menu_shown[thread_id]
+                raw_text = expanded_text
             # ────────────────────────────────────────────────────────────
 
             # No translation needed - Gemma is multilingual and responds in user's language
@@ -1081,16 +1143,22 @@ async def process_whatsapp_message(message: dict, from_number: str):
                     "type": "text",
                     "text": (
                         f"[User Image] Caption: {caption or '(no caption)'}{hint_text}\n\n"
-                        f"Analyze this image. It could be:\n"
-                        f"1. A receipt/invoice (expense or sales record)\n"
-                        f"2. A bank transaction alert or screenshot\n"
-                        f"3. A suspicious/scam message they want verified\n"
-                        f"4. A fraudulent payment request\n\n"
-                        f"Look at the image and determine:\n"
-                        f"- If it's a RECEIPT: Extract the amount and ask if it's an expense or sales\n"
-                        f"- If it's a MESSAGE/ALERT: Check if it looks suspicious and verify if it's a scam\n"
-                        f"- If it's SUSPICIOUS: Use the verify_message tool to analyze it\n"
-                        f"- If unclear: Ask the user what they want you to do with this image"
+                        f"ANALYZE THIS IMAGE INTELLIGENTLY:\n\n"
+                        f"Look at the image and determine what it is. Then take action:\n\n"
+                        f"1. IF IT'S A RECEIPT/INVOICE:\n"
+                        f"   - Extract the amount\n"
+                        f"   - Say: 'I can see ₦[amount] on this receipt. Is this an expense or sales?'\n"
+                        f"   - Wait for confirmation, THEN call the log_expense or log_sales tool to save it\n\n"
+                        f"2. IF IT'S A MESSAGE/SMS/WHATSAPP TEXT (could be scam):\n"
+                        f"   - Read the message text in the image yourself and analyze it directly — NO tool call needed\n"
+                        f"   - Tell the user immediately if it's a scam or legitimate, referring to \"your bank\" or \"BMONI\" (never a generic word like 'company')\n"
+                        f"   - DO NOT ask 'what would you like me to do' - just analyze it!\n\n"
+                        f"3. IF IT'S A BANK ALERT/TRANSACTION:\n"
+                        f"   - Check if it looks suspicious by analyzing it directly yourself — NO tool call needed\n"
+                        f"   - Warn the user if needed, referring to \"your bank\" or \"BMONI\" (never a generic word like 'company')\n\n"
+                        f"4. IF IT'S UNCLEAR (blurry, no text, random photo):\n"
+                        f"   - Only then ask: 'I can see this image but I'm not sure what it is. Is it a receipt or a message?'\n\n"
+                        f"BE PROACTIVE - Don't ask unnecessary questions. If you can see it's a message, verify it immediately!"
                     )
                 })
 
@@ -1178,7 +1246,7 @@ async def process_whatsapp_message(message: dict, from_number: str):
 
                     # Call unified agent with streaming
                     async for chunk in unified_agent.get_response_stream(
-                        content=user_question,
+                        content=content_for_agent,
                         thread_id=thread_id,
                         user_name=user_name,
                         message_type="voice",
@@ -1218,7 +1286,7 @@ async def process_whatsapp_message(message: dict, from_number: str):
 
                     # Call unified agent with streaming
                     async for chunk in unified_agent.get_response_stream(
-                        content=user_question,
+                        content=content_for_agent,
                         thread_id=thread_id,
                         user_name=user_name,
                         message_type="voice",
@@ -1256,7 +1324,7 @@ async def process_whatsapp_message(message: dict, from_number: str):
                         logger.warning("[bg] ⚠️ Streaming returned error response, falling back to non-streaming")
                         pre_tts_tasks.clear()
                         response_text = await unified_agent.get_response(
-                            content=user_question,
+                            content=content_for_agent,
                             thread_id=thread_id,
                             user_name=user_name,
                             message_type="voice",
@@ -1370,7 +1438,13 @@ async def process_whatsapp_message(message: dict, from_number: str):
                         raise Exception("All TTS sentences produced no audio")
 
                 logger.info(f"[bg] ✅ Audio generated: {len(audio_bytes)} bytes")
-                
+
+                # Compute wallet status once, used whether audio succeeds or falls back
+                from bmoni_store import bmoni_store
+                normalized_phone = from_number if from_number.startswith("+") else f"+{from_number}"
+                existing_account = bmoni_store.get_by_phone(normalized_phone)
+                has_wallet = existing_account and existing_account.get("wallet") is not None
+
                 media_id = await upload_media_to_whatsapp(audio_bytes, "audio/mpeg")
                 if media_id:
                     logger.info(f"[bg] ✅ Media uploaded successfully. Sending audio with media_id: {media_id}")
@@ -1381,17 +1455,18 @@ async def process_whatsapp_message(message: dict, from_number: str):
                     success = await send_whatsapp_message(from_number, media_id=media_id, media_type="audio")
                     if success:
                         logger.info(f"[bg] ✅ Audio message sent successfully to WhatsApp API!")
+                        # The audio already carries the spoken reply — don't repeat the
+                        # full text here, just offer the language switcher as a short
+                        # follow-up so voice users get the same option text users do.
+                        await send_response_with_language_list(
+                            from_number, "🌍 Change language anytime:", user_language, has_wallet
+                        )
                         return
 
                 # Standard text response + enhanced buttons
                 if len(response_text) > 1024:
                     await send_whatsapp_message(from_number, message_text=response_text)
                 else:
-                    # Get wallet status for buttons
-                    from bmoni_store import bmoni_store
-                    normalized_phone = from_number if from_number.startswith("+") else f"+{from_number}"
-                    existing_account = bmoni_store.get_by_phone(normalized_phone)
-                    has_wallet = existing_account and existing_account.get("wallet") is not None
                     await send_response_with_language_list(from_number, response_text, user_language, has_wallet)
 
             except Exception as e:

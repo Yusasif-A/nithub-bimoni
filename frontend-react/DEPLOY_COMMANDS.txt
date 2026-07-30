@@ -1,0 +1,16 @@
+# Firebase Deployment Commands
+# Copy and paste these commands one by one
+
+# 1. Navigate to frontend-react folder
+cd c:\Users\USER\Documents\Chop-beta\frontend-react
+
+# 2. Build the app (creates production files in dist folder)
+npm run build
+
+# 3. Switch to chopbeta-ai Firebase project
+firebase use chopbeta-ai
+
+# 4. Deploy to Firebase Hosting
+firebase deploy
+
+# Your site will be live at: https://chopbeta-ai.web.app

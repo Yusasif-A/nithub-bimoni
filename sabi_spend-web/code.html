@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SabiSpend - Understand Your Money, Grow Your Savings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          bg: "#fdfcf6",
+          panel: "#ffffff",
+          panelSoft: "#eef4ff",
+          panelTint: "#e5eeff",
+          ink: "#10202d",
+          muted: "#51606e",
+          primary: "#0a6a3c",
+          primaryDark: "#064927",
+          success: "#25d366",
+          accent: "#f59e0b",
+          danger: "#dc2626",
+          line: "#d5dfec"
+        },
+        fontFamily: {
+          display: ["Hanken Grotesk", "sans-serif"],
+          body: ["Be Vietnam Pro", "sans-serif"]
+        },
+        boxShadow: {
+          soft: "0 18px 50px rgba(12, 27, 39, 0.08)",
+          card: "0 12px 30px rgba(10, 31, 49, 0.10)"
+        }
+      }
+    }
+  }
+</script>
+<style>
+  :root { color-scheme: light; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: "Be Vietnam Pro", sans-serif;
+    background:
+      radial-gradient(circle at top left, rgba(10,106,60,.09), transparent 28%),
+      radial-gradient(circle at 85% 8%, rgba(37,211,102,.12), transparent 24%),
+      linear-gradient(180deg, #fbfbff 0%, #fdfcf6 100%);
+    color: #10202d;
+  }
+  .material-symbols-outlined {
+    font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 24;
+    display: inline-block;
+    vertical-align: middle;
+    line-height: 1;
+  }
+  .chat-left { border-radius: 20px 20px 20px 6px; }
+  .chat-right { border-radius: 20px 20px 6px 20px; }
+  .floaty { animation: floaty 6s ease-in-out infinite; }
+  .floaty.delay { animation-delay: -2s; }
+  @keyframes floaty {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  .marquee { animation: marquee 26s linear infinite; }
+  @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+</style>
+</head>
+<body class="font-body">
+<header class="sticky top-0 z-50 border-b border-white/70 bg-white/85 backdrop-blur-xl">
+  <div class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-10">
+    <a href="#top" class="flex items-center gap-3">
+      <div class="grid h-10 w-10 place-items-center rounded-2xl bg-primary text-white shadow-card">
+        <span class="material-symbols-outlined">savings</span>
+      </div>
+      <div>
+        <div class="font-display text-lg font-bold leading-none text-primary">SabiSpend</div>
+        <div class="text-xs font-semibold uppercase tracking-[0.22em] text-muted">WhatsApp money assistant</div>
+      </div>
+    </a>
+    <nav class="hidden items-center gap-8 text-sm font-semibold text-muted md:flex">
+      <a href="#how-it-works" class="hover:text-primary">How it works</a>
+      <a href="#features" class="hover:text-primary">Features</a>
+      <a href="#security" class="hover:text-primary">Security</a>
+      <a href="#faq" class="hover:text-primary">FAQ</a>
+    </nav>
+    <a href="#" class="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-card transition hover:bg-primaryDark">
+      <span class="material-symbols-outlined text-[18px]">chat</span>
+      Chat on WhatsApp
+    </a>
+  </div>
+</header>
+
+<main id="top">
+  <section class="mx-auto grid max-w-7xl items-center gap-14 px-5 pb-14 pt-14 lg:grid-cols-[1.1fr_0.9fr] lg:px-10 lg:pb-20 lg:pt-20">
+    <div class="max-w-2xl">
+      <div class="inline-flex items-center gap-2 rounded-full bg-primary/8 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-primary">
+        WhatsApp-native
+        <span class="h-1.5 w-1.5 rounded-full bg-success"></span>
+        No app needed
+      </div>
+      <h1 class="mt-6 font-display text-4xl font-bold leading-tight text-ink sm:text-5xl lg:text-6xl">
+        Understand Your Money.
+        <span class="block text-primary">Grow Your Savings.</span>
+        All on WhatsApp.
+      </h1>
+      <p class="mt-6 max-w-xl text-lg leading-8 text-muted">
+        Built for market women, traders, and small business owners. Send receipts, speak in your language, and get clear money advice without stress.
+      </p>
+      <div class="mt-8 flex flex-col gap-4 sm:flex-row">
+        <a href="#" class="inline-flex items-center justify-center gap-3 rounded-full bg-primary px-6 py-4 text-sm font-bold text-white shadow-card transition hover:-translate-y-0.5 hover:bg-primaryDark">
+          <span class="material-symbols-outlined text-[18px]">play_arrow</span>
+          Start on WhatsApp
+        </a>
+        <a href="#features" class="inline-flex items-center justify-center gap-3 rounded-full border-2 border-primary/25 bg-white px-6 py-4 text-sm font-bold text-primary transition hover:border-primary hover:bg-primary/5">
+          Watch Demo
+        </a>
+      </div>
+      <div class="mt-8 flex flex-wrap gap-3 text-sm font-semibold text-muted">
+        <span class="rounded-full bg-white px-4 py-2 shadow-sm ring-1 ring-line">Pidgin • Yoruba • Hausa • Igbo</span>
+        <span class="rounded-full bg-white px-4 py-2 shadow-sm ring-1 ring-line">Receipt scanning</span>
+        <span class="rounded-full bg-white px-4 py-2 shadow-sm ring-1 ring-line">Scam checks</span>
+      </div>
+    </div>
+
+    <div class="relative mx-auto w-full max-w-md">
+      <div class="absolute -left-8 top-8 h-28 w-28 rounded-full bg-success/15 blur-3xl"></div>
+      <div class="absolute -right-8 bottom-6 h-32 w-32 rounded-full bg-primary/15 blur-3xl"></div>
+      <div class="floaty relative rounded-[2.5rem] bg-[#0f2030] p-3 shadow-[0_30px_80px_rgba(9,20,31,.25)]">
+        <div class="overflow-hidden rounded-[2rem] border border-white/10 bg-[#f4eadf]">
+          <img src="main-screen.png" alt="SabiSpend WhatsApp dashboard mockup" class="block h-auto w-full">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="border-y border-primary/10 bg-primary text-white">
+    <div class="mx-auto max-w-7xl overflow-hidden px-5 py-4 lg:px-10">
+      <div class="marquee flex w-max items-center gap-10 text-sm font-bold uppercase tracking-[0.18em]">
+        <span class="flex items-center gap-2"><span class="material-symbols-outlined">verified</span> 200+ Nigerian foods recognized</span>
+        <span class="flex items-center gap-2"><span class="material-symbols-outlined">security</span> BMONI secure wallets</span>
+        <span class="flex items-center gap-2"><span class="material-symbols-outlined">translate</span> Pidgin • Yoruba • Hausa • Igbo</span>
+        <span class="flex items-center gap-2"><span class="material-symbols-outlined">qr_code_2</span> Works on WhatsApp only</span>
+        <span class="flex items-center gap-2"><span class="material-symbols-outlined">verified</span> 200+ Nigerian foods recognized</span>
+        <span class="flex items-center gap-2"><span class="material-symbols-outlined">security</span> BMONI secure wallets</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="mx-auto max-w-7xl px-5 py-20 lg:px-10">
+    <div class="mx-auto max-w-2xl text-center">
+      <p class="text-xs font-bold uppercase tracking-[0.26em] text-primary">The SabiSpend Difference</p>
+      <h2 class="mt-3 font-display text-3xl font-bold text-ink sm:text-4xl">Designed for your daily hustle</h2>
+    </div>
+    <div class="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <article class="rounded-[1.5rem] border border-line bg-white p-6 shadow-sm">
+        <div class="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-primary/10 text-primary"><span class="material-symbols-outlined">mic</span></div>
+        <h3 class="font-display text-xl font-bold">Voice & Photo First</h3>
+        <p class="mt-3 text-sm leading-7 text-muted">No typing needed. Speak naturally or snap a receipt and let SabiSpend do the reading.</p>
+      </article>
+      <article class="rounded-[1.5rem] border border-line bg-white p-6 shadow-sm">
+        <div class="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-success/10 text-success"><span class="material-symbols-outlined">trending_up</span></div>
+        <h3 class="font-display text-xl font-bold">Daily Profit Helper</h3>
+        <p class="mt-3 text-sm leading-7 text-muted">See what you made today, what you spent, and how close you are to your savings goal.</p>
+      </article>
+      <article class="rounded-[1.5rem] border border-line bg-white p-6 shadow-sm">
+        <div class="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-danger/10 text-danger"><span class="material-symbols-outlined">gpp_maybe</span></div>
+        <h3 class="font-display text-xl font-bold">Scam Checker</h3>
+        <p class="mt-3 text-sm leading-7 text-muted">Forward suspicious messages or links and get a clear warning before you lose money.</p>
+      </article>
+      <article class="rounded-[1.5rem] border border-line bg-white p-6 shadow-sm">
+        <div class="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-panelTint text-primary"><span class="material-symbols-outlined">account_balance_wallet</span></div>
+        <h3 class="font-display text-xl font-bold">Safe Savings</h3>
+        <p class="mt-3 text-sm leading-7 text-muted">Guided saving for rent, stock, or school fees, backed by BMONI secure wallets.</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="how-it-works" class="bg-[#12202e] text-white">
+    <div class="mx-auto grid max-w-7xl gap-12 px-5 py-20 lg:grid-cols-[0.95fr_1.05fr] lg:px-10">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-[0.26em] text-[#87d8a2]">How it works</p>
+        <h2 class="mt-3 font-display text-3xl font-bold sm:text-4xl">Start Sabi-ing in 4 simple steps</h2>
+        <div class="mt-10 space-y-8">
+          <div class="flex gap-4">
+            <div class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary text-white font-bold">1</div>
+            <div>
+              <h3 class="font-display text-xl font-bold">Send a message</h3>
+              <p class="mt-2 text-sm leading-7 text-white/75">Say hi or send a voice note to the WhatsApp number. No password needed.</p>
+            </div>
+          </div>
+          <div class="flex gap-4">
+            <div class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary text-white font-bold">2</div>
+            <div>
+              <h3 class="font-display text-xl font-bold">Link your wallet</h3>
+              <p class="mt-2 text-sm leading-7 text-white/75">We help you connect a secure BMONI wallet in a few guided steps.</p>
+            </div>
+          </div>
+          <div class="flex gap-4">
+            <div class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary text-white font-bold">3</div>
+            <div>
+              <h3 class="font-display text-xl font-bold">Send photos or speak</h3>
+              <p class="mt-2 text-sm leading-7 text-white/75">Capture daily sales, stock, or expenses and let the assistant organize them.</p>
+            </div>
+          </div>
+          <div class="flex gap-4">
+            <div class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary text-white font-bold">4</div>
+            <div>
+              <h3 class="font-display text-xl font-bold">Get advice</h3>
+              <p class="mt-2 text-sm leading-7 text-white/75">Receive simple profit summaries and practical saving tips every day.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <img src="image1.png" alt="Money counting scene" class="h-64 w-full rounded-[1.8rem] object-cover shadow-soft">
+        <img src="image2.png" alt="Money counting scene variant" class="h-64 w-full rounded-[1.8rem] object-cover shadow-soft">
+        <img src="image3.png" alt="Feature badges for scam alert and smart AI" class="h-72 w-full rounded-[1.8rem] bg-white object-cover p-3 shadow-soft sm:col-span-1">
+        <img src="image4.png" alt="Secure and trusted BMONI badge" class="h-72 w-full rounded-[1.8rem] bg-white object-contain p-4 shadow-soft sm:col-span-1">
+      </div>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-7xl px-5 py-20 lg:px-10">
+    <div class="grid gap-6 rounded-[2rem] bg-[#bdf8c7] px-6 py-10 text-center shadow-soft lg:grid-cols-4">
+      <div class="space-y-3">
+        <div class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white text-primary shadow-sm"><span class="material-symbols-outlined">visibility</span></div>
+        <p class="font-semibold text-ink">Simple Icons</p>
+      </div>
+      <div class="space-y-3">
+        <div class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white text-primary shadow-sm"><span class="material-symbols-outlined">hearing</span></div>
+        <p class="font-semibold text-ink">Voice Only Mode</p>
+      </div>
+      <div class="space-y-3">
+        <div class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white text-primary shadow-sm"><span class="material-symbols-outlined">psychology</span></div>
+        <p class="font-semibold text-ink">Smart AI</p>
+      </div>
+      <div class="space-y-3">
+        <div class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white text-primary shadow-sm"><span class="material-symbols-outlined">verified_user</span></div>
+        <p class="font-semibold text-ink">No Scam Zone</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="security" class="mx-auto max-w-7xl px-5 py-8 lg:px-10">
+    <div class="grid items-center gap-10 rounded-[2.2rem] bg-[#edf4ff] p-6 shadow-soft lg:grid-cols-[1fr_0.9fr] lg:p-10">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-[0.26em] text-primary">Security is our priority</p>
+        <h2 class="mt-3 font-display text-3xl font-bold text-ink sm:text-4xl">Your money is safe with BMONI</h2>
+        <p class="mt-5 max-w-xl text-base leading-8 text-muted">
+          SabiSpend does not hold your money. We work with BMONI, a regulated partner, so savings stay locked away from scammers and remain under your control.
+        </p>
+        <ul class="mt-6 space-y-3 text-sm font-semibold text-ink">
+          <li class="flex items-center gap-3"><span class="material-symbols-outlined text-success">check</span>NDIC-insured wallets</li>
+          <li class="flex items-center gap-3"><span class="material-symbols-outlined text-success">check</span>24/7 scam message verification</li>
+          <li class="flex items-center gap-3"><span class="material-symbols-outlined text-success">check</span>Fingerprint or face unlock</li>
+        </ul>
+        <a href="#" class="mt-8 inline-flex items-center rounded-full bg-[#172533] px-6 py-3.5 text-sm font-bold text-white shadow-card transition hover:bg-[#0f1821]">
+          Read Security Policy
+        </a>
+      </div>
+      <div class="rounded-[1.6rem] bg-white p-5 shadow-card">
+        <div class="flex items-center justify-between border-b border-line pb-4">
+          <div class="flex items-center gap-3">
+            <div class="grid h-11 w-11 place-items-center rounded-full bg-primary/10 text-primary">
+              <span class="material-symbols-outlined">security</span>
+            </div>
+            <div>
+              <div class="font-bold">Scam Alert</div>
+              <div class="text-xs font-semibold text-muted">Forwarded by user</div>
+            </div>
+          </div>
+          <div class="text-xs font-bold uppercase tracking-[0.2em] text-danger">Scam detected</div>
+        </div>
+        <div class="mt-4 rounded-2xl border border-line bg-[#fafcff] p-4 text-sm italic text-muted">
+          "Congratulations! You won a big prize. Click here to claim it."
+        </div>
+        <div class="mt-4 rounded-2xl bg-[#fff0f0] p-4 text-sm text-danger">
+          This looks like a phishing attempt. Do not click the link.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq" class="mx-auto max-w-3xl px-5 py-20 lg:px-10">
+    <div class="text-center">
+      <p class="text-xs font-bold uppercase tracking-[0.26em] text-primary">Common Questions</p>
+      <h2 class="mt-3 font-display text-3xl font-bold text-ink sm:text-4xl">You ask, we answer</h2>
+    </div>
+    <div class="mt-10 space-y-4">
+      <details class="group rounded-2xl border border-line bg-white px-5 py-4 shadow-sm">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-ink">
+          Do I need to download an app?
+          <span class="material-symbols-outlined transition group-open:rotate-180">expand_more</span>
+        </summary>
+        <p class="pt-4 text-sm leading-7 text-muted">No. SabiSpend lives on WhatsApp, so you can use it on any phone without extra downloads.</p>
+      </details>
+      <details class="group rounded-2xl border border-line bg-white px-5 py-4 shadow-sm">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-ink">
+          Does it understand Pidgin?
+          <span class="material-symbols-outlined transition group-open:rotate-180">expand_more</span>
+        </summary>
+        <p class="pt-4 text-sm leading-7 text-muted">Yes. It is designed for Pidgin, Yoruba, Hausa, and Igbo, with simple responses that stay easy to follow.</p>
+      </details>
+      <details class="group rounded-2xl border border-line bg-white px-5 py-4 shadow-sm">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-ink">
+          Is my money safe?
+          <span class="material-symbols-outlined transition group-open:rotate-180">expand_more</span>
+        </summary>
+        <p class="pt-4 text-sm leading-7 text-muted">Your funds stay in a secure partner wallet. SabiSpend helps you track and control them, but does not hold them directly.</p>
+      </details>
+      <details class="group rounded-2xl border border-line bg-white px-5 py-4 shadow-sm">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-ink">
+          What is BMONI?
+          <span class="material-symbols-outlined transition group-open:rotate-180">expand_more</span>
+        </summary>
+        <p class="pt-4 text-sm leading-7 text-muted">BMONI is the secure financial partner that powers the wallet layer behind the chat experience.</p>
+      </details>
+    </div>
+  </section>
+
+  <section class="bg-primary px-5 py-20 text-white">
+    <div class="mx-auto max-w-3xl text-center">
+      <h2 class="font-display text-3xl font-bold sm:text-4xl">Ready to Grow Your Money?</h2>
+      <p class="mx-auto mt-5 max-w-2xl text-base leading-8 text-white/85">Join thousands of Nigerian market women and artisans making smarter money moves today.</p>
+      <a href="#" class="mt-8 inline-flex items-center gap-3 rounded-full bg-white px-8 py-4 text-sm font-bold text-primary shadow-card transition hover:-translate-y-0.5">
+        <span class="material-symbols-outlined">chat</span>
+        Chat with SabiSpend
+      </a>
+      <p class="mt-4 text-xs font-semibold uppercase tracking-[0.22em] text-white/75">Free to use • Works on any phone with WhatsApp</p>
+    </div>
+  </section>
+</main>
+
+<footer class="bg-[#10202d] text-white">
+  <div class="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-10 lg:flex-row lg:items-center lg:justify-between lg:px-10">
+    <div class="max-w-sm">
+      <div class="font-display text-xl font-bold">SabiSpend</div>
+      <p class="mt-2 text-sm leading-7 text-white/70">AI money assistant for the real hustle. Built for Nigeria's traders, artisans, and everyday savers.</p>
+    </div>
+    <div class="flex flex-wrap gap-6 text-sm font-semibold text-white/70">
+      <a href="#top" class="hover:text-white">WhatsApp</a>
+      <a href="#faq" class="hover:text-white">FAQ</a>
+      <a href="#features" class="hover:text-white">Features</a>
+      <a href="#" class="hover:text-white">Privacy</a>
+    </div>
+    <div class="text-sm font-semibold text-white/55">© 2026 SabiSpend. Built for Nigeria.</div>
+  </div>
+</footer>
+</body>
+</html>
