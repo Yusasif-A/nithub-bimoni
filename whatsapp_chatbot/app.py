@@ -1020,7 +1020,7 @@ async def process_whatsapp_message(message: dict, from_number: str):
                 await send_whatsapp_message(from_number, "Sorry, I couldn't process that voice message. Please try again.")
                 return
 
-        # ---------- IMAGE (INVOICE/RECEIPT OCR WORKFLOW) ----------
+        # ---------- IMAGE (MULTI-PURPOSE: RECEIPT, SCAM, OR TRANSACTION) ----------
         elif message_type == "image":
             caption = message.get("image", {}).get("caption", "")
             image_media_id = message["image"]["id"]
@@ -1029,7 +1029,7 @@ async def process_whatsapp_message(message: dict, from_number: str):
 
             for _attempt in range(1, _img_max_retries + 1):
                 try:
-                    logger.info(f"[bg] 📥 Downloading invoice/receipt image (attempt {_attempt}/{_img_max_retries})")
+                    logger.info(f"[bg] 📥 Downloading image (attempt {_attempt}/{_img_max_retries})")
                     image_bytes = await download_media(image_media_id)
                     if not image_bytes:
                         raise ValueError("Downloaded image is empty")
@@ -1064,23 +1064,34 @@ async def process_whatsapp_message(message: dict, from_number: str):
                 except Exception as ocr_err:
                     logger.warning(f"[bg] OCR unavailable ({ocr_err}) — sending image to AI directly")
 
-                # Step 3: Send image (+ optional OCR hints) to AI
+                # Step 3: Send image to AI with intelligent prompt
                 data_uri = convert_to_data_uri(image_bytes, "image/jpeg")
+                
+                # Build context-aware prompt based on caption and OCR results
                 if ocr_hint:
-                    hint_text = (
-                        f"\n\n[System note: OCR detected these amounts: {ocr_hint}. "
-                        f"Look at the image yourself to verify. Ask the user if this is an expense (stock purchase) "
-                        f"or sales record, then confirm the amount before logging it.]"
-                    )
+                    hint_text = f"\n\n[System note: OCR detected these amounts: {ocr_hint}]"
                 else:
                     hint_text = ""
+                
                 content_for_agent.append({
                     "type": "image_url",
                     "image_url": {"url": data_uri}
                 })
                 content_for_agent.append({
                     "type": "text",
-                    "text": f"[Invoice/Receipt Image] Caption: {caption}{hint_text}\n\nLook at the image and extract the amount. Ask the user: 'I can see ₦[amount] on this receipt. Is this an expense (stock you bought) or sales you made today?'"
+                    "text": (
+                        f"[User Image] Caption: {caption or '(no caption)'}{hint_text}\n\n"
+                        f"Analyze this image. It could be:\n"
+                        f"1. A receipt/invoice (expense or sales record)\n"
+                        f"2. A bank transaction alert or screenshot\n"
+                        f"3. A suspicious/scam message they want verified\n"
+                        f"4. A fraudulent payment request\n\n"
+                        f"Look at the image and determine:\n"
+                        f"- If it's a RECEIPT: Extract the amount and ask if it's an expense or sales\n"
+                        f"- If it's a MESSAGE/ALERT: Check if it looks suspicious and verify if it's a scam\n"
+                        f"- If it's SUSPICIOUS: Use the verify_message tool to analyze it\n"
+                        f"- If unclear: Ask the user what they want you to do with this image"
+                    )
                 })
 
             except Exception as e:
